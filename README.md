@@ -3,7 +3,7 @@
 // FOLDER STRUCTURE
 // ============================================
 
-/*
+```
 lib/
 ├── main.dart
 └── app/
@@ -86,7 +86,7 @@ lib/
 ├── routes.dart            # Routes exports
 ├── app_pages.dart
 └── app_routes.dart
-*/
+```
 # App Lock - Troubleshooting Guide
 
 ## Problem 1: Lock Screen Not Showing
