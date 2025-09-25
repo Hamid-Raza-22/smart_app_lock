@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<device-admin xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-policies>
+        <!-- Required for screen lock -->
+        <force-lock />
+
+        <!-- Required for factory reset -->
+        <wipe-data />
+
+        <!-- Required for password management -->
+        <reset-password />
+        <limit-password />
+        <watch-login />
+
+        <!-- Required for encryption -->
+        <encrypted-storage />
+
+        <!-- Required for disable camera -->
+        <disable-camera />
+    </uses-policies>
+</device-admin>
