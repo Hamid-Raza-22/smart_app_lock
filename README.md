@@ -1,6 +1,6 @@
 # SMART APP LOCK
 
-# SMART APP LOCK - Troubleshooting Guide
+## SMART APP LOCK - Troubleshooting Guide
 
 ## Problem 1: Lock Screen Not Showing
 ### Solutions:
