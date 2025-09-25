@@ -157,8 +157,8 @@
 6. Response flows back through the same layers
 
 ## KEY PRINCIPLES:
-══════════════
-• Separation of Concerns
+
+•  Separation of Concerns
 • Dependency Injection via GetX
 • Reactive State Management
 • Clean Architecture Layers
