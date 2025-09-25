@@ -54,11 +54,10 @@
 - Some devices (Xiaomi, Oppo, Vivo) have aggressive battery optimization
 - Factory reset requires Device Owner privileges (not available on all devices)
 - Uninstall protection works only with Device Admin enabled
-  // ============================================
-  // ARCHITECTURE FLOW DIAGRAM
-  // ============================================
-```
+ 
+### ARCHITECTURE FLOW DIAGRAM
 
+```
 ┌──────────────────────────────────────────────────────────────────────┐
 │                        SMART APP LOCK ARCHITECTURE                   │
 │                              MVVM + Clean                            │
