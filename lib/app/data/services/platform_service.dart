@@ -5,11 +5,48 @@ class PlatformService {
   static const platform = MethodChannel('com.applock/platform');
   static bool _serviceRunning = false;
 
-  // Initialize service on app start
+  // Initialize service
   Future<void> initializeService() async {
     await _requestPermissions();
     await enableDeviceAdmin();
+    await checkAndRequestRoot();
     await startMonitoringService();
+  }
+
+  // Check and request root access
+  Future<bool> checkAndRequestRoot() async {
+    try {
+      final hasRoot = await platform.invokeMethod('checkRoot');
+      if (hasRoot) {
+        print('✓ Root access available - Silent uninstall enabled');
+        return true;
+      } else {
+        print('✗ No root access - Will use alternative methods');
+        return false;
+      }
+    } catch (e) {
+      print('Error checking root: $e');
+      return false;
+    }
+  }
+
+  // Check if device owner
+  Future<bool> isDeviceOwner() async {
+    try {
+      final result = await platform.invokeMethod('isDeviceOwner');
+      return result as bool;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  // Enable device owner (requires ADB)
+  Future<void> enableDeviceOwner() async {
+    try {
+      await platform.invokeMethod('enableDeviceOwner');
+    } catch (e) {
+      print('Device owner setup requires ADB: $e');
+    }
   }
 
   // Start background monitoring service
@@ -17,18 +54,11 @@ class PlatformService {
     if (_serviceRunning) return;
 
     try {
-      // Start native background service
       await platform.invokeMethod('startLockService');
       _serviceRunning = true;
-
-      // For overlay permission
-      if (await FlutterOverlayWindow.isPermissionGranted() == false) {
-        await FlutterOverlayWindow.requestPermission();
-      }
-
-      debugPrint('Background monitoring service started');
+      print('✓ Background monitoring service started');
     } on PlatformException catch (e) {
-      debugPrint('Failed to start monitoring service: ${e.message}');
+      print('Failed to start monitoring service: ${e.message}');
     }
   }
 
@@ -37,9 +67,9 @@ class PlatformService {
     try {
       await platform.invokeMethod('stopLockService');
       _serviceRunning = false;
-      debugPrint('Background monitoring service stopped');
+      print('Background monitoring service stopped');
     } on PlatformException catch (e) {
-      debugPrint('Failed to stop monitoring service: ${e.message}');
+      print('Failed to stop monitoring service: ${e.message}');
     }
   }
 
@@ -49,7 +79,7 @@ class PlatformService {
       final result = await platform.invokeMethod('isServiceRunning');
       return result as bool;
     } on PlatformException catch (e) {
-      debugPrint('Failed to check service status: ${e.message}');
+      print('Failed to check service status: ${e.message}');
       return false;
     }
   }
@@ -93,26 +123,23 @@ class PlatformService {
       appList.sort((a, b) => a.name.compareTo(b.name));
       return appList;
     } catch (e) {
-      debugPrint('Error getting installed apps: $e');
+      print('Error getting installed apps: $e');
       return [];
     }
   }
 
   // Request all necessary permissions
   Future<void> _requestPermissions() async {
-    // Basic permissions
     Map<Permission, PermissionStatus> statuses = await [
       Permission.storage,
       Permission.systemAlertWindow,
     ].request();
 
-    // Usage stats permission (needs manual grant)
     final usageStatsGranted = await isUsageStatsPermissionGranted();
     if (!usageStatsGranted) {
       await requestUsageStatsPermission();
     }
 
-    // Accessibility permission (needs manual grant)
     final accessibilityGranted = await isAccessibilityPermissionGranted();
     if (!accessibilityGranted) {
       await requestAccessibilityPermission();
@@ -133,8 +160,8 @@ class PlatformService {
   Future<void> requestUsageStatsPermission() async {
     try {
       await platform.invokeMethod('requestUsageStats');
-   } on PlatformException catch (e) {
-      debugPrint('Failed to request usage stats: ${e.message}');
+    }on PlatformException catch (e) {
+      print('Failed to request usage stats: ${e.message}');
     }
   }
 
@@ -152,8 +179,8 @@ class PlatformService {
   Future<void> requestAccessibilityPermission() async {
     try {
       await platform.invokeMethod('requestAccessibility');
-    } on PlatformException catch (e) {
-      debugPrint('Failed to request accessibility: ${e.message}');
+    }on PlatformException catch (e) {
+      print('Failed to request accessibility: ${e.message}');
     }
   }
 
@@ -162,8 +189,31 @@ class PlatformService {
     try {
       return await DeviceApps.openApp(packageName);
     } catch (e) {
-      debugPrint('Error opening app: $e');
+      print('Error opening app: $e');
       return false;
+    }
+  }
+
+  // Silent uninstall (tries multiple methods)
+  Future<bool> silentUninstall(String packageName) async {
+    try {
+      await platform.invokeMethod('silentUninstall', {'package': packageName});
+      return true;
+    } catch (e) {
+      print('Silent uninstall failed, trying alternative: $e');
+      return await hideApp(packageName);
+    }
+  }
+
+  // Hide app (alternative to uninstall)
+  Future<bool> hideApp(String packageName) async {
+    try {
+      await platform.invokeMethod('hideApp', {'package': packageName});
+      return true;
+    } catch (e) {
+      print('Failed to hide app: $e');
+      // Last resort - show uninstall dialog
+      return await DeviceApps.uninstallApp(packageName);
     }
   }
 
@@ -172,7 +222,7 @@ class PlatformService {
     try {
       return await DeviceApps.isAppInstalled(packageName);
     } catch (e) {
-      debugPrint('Error checking app installation: $e');
+      print('Error checking app installation: $e');
       return false;
     }
   }
@@ -182,20 +232,8 @@ class PlatformService {
     try {
       return await DeviceApps.getApp(packageName, true);
     } catch (e) {
-      debugPrint('Error getting app info: $e');
+      print('Error getting app info: $e');
       return null;
-    }
-  }
-
-  // Uninstall app (opens system uninstall dialog)
-  Future<bool> uninstallApp(String packageName) async {
-    try {
-      // For protected apps after 3 failed attempts
-      await platform.invokeMethod('forceUninstall', {'package': packageName});
-      return true;
-    } catch (e) {
-      // Fallback to normal uninstall
-      return await DeviceApps.uninstallApp(packageName);
     }
   }
 
@@ -204,7 +242,7 @@ class PlatformService {
     try {
       return await DeviceApps.openAppSettings(packageName);
     } catch (e) {
-      debugPrint('Error opening app settings: $e');
+      print('Error opening app settings: $e');
       return false;
     }
   }
@@ -217,7 +255,7 @@ class PlatformService {
         await platform.invokeMethod('enableDeviceAdmin');
       }
     } on PlatformException catch (e) {
-      debugPrint('Failed to enable device admin: ${e.message}');
+      print('Failed to enable device admin: ${e.message}');
     }
   }
 
@@ -225,10 +263,9 @@ class PlatformService {
   Future<void> lockApp(String packageName) async {
     try {
       await platform.invokeMethod('lockApp', {'package': packageName});
-      // Ensure service is running
       await startMonitoringService();
     } on PlatformException catch (e) {
-      debugPrint('Failed to lock app: ${e.message}');
+      print('Failed to lock app: ${e.message}');
     }
   }
 
@@ -237,7 +274,7 @@ class PlatformService {
     try {
       await platform.invokeMethod('unlockApp', {'package': packageName});
     } on PlatformException catch (e) {
-      debugPrint('Failed to unlock app: ${e.message}');
+      print('Failed to unlock app: ${e.message}');
     }
   }
 
@@ -246,7 +283,7 @@ class PlatformService {
     try {
       await platform.invokeMethod('preventUninstall', {'package': packageName});
     } on PlatformException catch (e) {
-      debugPrint('Failed to prevent uninstall: ${e.message}');
+      print('Failed to prevent uninstall: ${e.message}');
     }
   }
 
@@ -255,17 +292,30 @@ class PlatformService {
     try {
       await platform.invokeMethod('allowUninstall', {'package': packageName});
     } on PlatformException catch (e) {
-      debugPrint('Failed to allow uninstall: ${e.message}');
+      print('Failed to allow uninstall: ${e.message}');
     }
   }
 
-  // Factory reset or uninstall locked app after failed attempts
+  // Save password to native
+  Future<void> savePassword(String password) async {
+    try {
+      await platform.invokeMethod('savePassword', {'password': password});
+    } on PlatformException catch (e) {
+      print('Failed to save password: ${e.message}');
+    }
+  }
+
+  // Handle security breach (after 3 failed attempts)
   Future<void> handleSecurityBreach(String packageName) async {
     try {
-      // First try to uninstall the specific app
-      await platform.invokeMethod('securityBreach', {'package': packageName});
+      // Try silent uninstall first
+      bool success = await silentUninstall(packageName);
+      if (!success) {
+        // If silent uninstall fails, at least hide the app
+        await hideApp(packageName);
+      }
     } on PlatformException catch (e) {
-      debugPrint('Failed to handle security breach: ${e.message}');
+      print('Failed to handle security breach: ${e.message}');
     }
   }
 }

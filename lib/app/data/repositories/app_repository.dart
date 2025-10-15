@@ -19,7 +19,8 @@ class AppRepository {
 
   // Uninstall app
   Future<bool> uninstallApp(String packageName) async {
-    return await _platformService.uninstallApp(packageName);
+    await _platformService.allowUninstall(packageName);
+    return true;
   }
 
   // Prevent uninstall

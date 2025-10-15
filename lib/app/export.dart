@@ -125,11 +125,3 @@ export 'modules/settings/views/widgets/theme_selector_widget.dart';
 // Navigation and Routing
 export 'routes/app_pages.dart';
 // export 'routes/app_routes.dart';
-
-
-
-
-
-// ============================================
-// USAGE EXAMPLE
-// ============================================
